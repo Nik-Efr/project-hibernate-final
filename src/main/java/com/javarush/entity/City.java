@@ -18,7 +18,7 @@ public class City {
 
     String name;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "country_id")
     Country country;
 

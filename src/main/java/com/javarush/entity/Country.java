@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Getter
@@ -11,7 +12,6 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 @Table(name = "country", schema = "world")
 public class Country {
 
@@ -25,7 +25,8 @@ public class Country {
 
     String name;
 
-    Integer continent;
+    @Enumerated(EnumType.ORDINAL)
+    Continent continent;
 
     String region;
 
@@ -33,7 +34,7 @@ public class Country {
     BigDecimal surfaceArea;
 
     @Column(name = "indep_year")
-    Short indepYear;
+    Short independenceYear;
 
     Integer population;
 
@@ -54,7 +55,11 @@ public class Country {
     @Column(name = "head_of_state")
     String headOfState;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "capital")
     City capital;
+
+    @OneToMany(fetch = FetchType.EAGER)
+    @JoinColumn(name = "country_id")
+    private List<CountryLanguage> languages;
 }
