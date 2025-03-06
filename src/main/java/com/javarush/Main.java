@@ -1,6 +1,8 @@
 package com.javarush;
 
+import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.javarush.entity.City;
 import com.javarush.entity.Country;
@@ -11,6 +13,7 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisStringCommands;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -47,7 +50,57 @@ public class Main {
         List<CityCountry> cityCountries = main.transformData(allCities);
         RedisClient redisClient = main.getRedisClient();
         main.saveToRedis(cityCountries, redisClient);
+        List<Integer> ids = List.of(1,2020,1234,2345,1890,78,156,994,99,1111);
+
+        long startMysql = System.currentTimeMillis();
+        main.getMysqlData(ids);
+        long stopMysql = System.currentTimeMillis();
+
+        long startRedis = System.currentTimeMillis();
+        main.getRedisData(ids);
+        long stopRedis = System.currentTimeMillis();
+
+        System.out.println("Результаты плохого теста:");
+        System.out.printf("%s:\t%d ms\n", "Redis", (stopRedis - startRedis));
+        System.out.printf("%s:\t%d ms\n", "MySQL", (stopMysql - startMysql));
+
+        System.out.println();
+
+        System.out.println("Результаты с использованием redis-benchmark и mysqlslap:");
+        System.out.println("Redis - avg_latency = 0.131 ms");
+        System.out.println("MySql - avg_latency = 0.360 ms");
+
         main.shutdown(redisClient);
+    }
+
+    private void getMysqlData(List<Integer> ids) {
+        Session session = sessionFactory.openSession();
+        try(session){
+            session.getTransaction().begin();
+
+            for(Integer id: ids){
+                City city = session.get(City.class, id);
+                List<CountryLanguage> languages = city.getCountry().getLanguages();
+            }
+
+            session.getTransaction().commit();
+        }catch (Exception e){
+            session.getTransaction().rollback();
+        }
+    }
+
+    private void getRedisData(List<Integer> ids) {
+        try(StatefulRedisConnection<String,String> connection = getRedisClient().connect()){
+            RedisStringCommands<String,String> sync = connection.sync();
+            for(Integer id:ids){
+                String json = sync.get(String.valueOf(id));
+                if(json!= null){
+                    CityCountry cc = new ObjectMapper().readValue(json, CityCountry.class);
+                }
+            }
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void saveToRedis(List<CityCountry> cityCountries, RedisClient redisClient) {
@@ -64,9 +117,7 @@ public class Main {
 
     private RedisClient getRedisClient() {
         RedisClient redisClient = RedisClient.create(RedisURI.create("localhost", 6379));
-        try (StatefulRedisConnection<String, String> connection = redisClient.connect()) {
-            System.out.println("\nConnected to Redis!\n");
-        }
+        try (StatefulRedisConnection<String, String> connection = redisClient.connect()) {}
         return redisClient;
     }
 

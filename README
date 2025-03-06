@@ -1,0 +1,14 @@
+1) Собрать и запустить образ:
+docker build -t mysql-hibernate .
+docker run -d -p 3306:3306 --name mysql-hibernate-container mysql-hibernate
+
+2) Поднять Redis:
+docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
+
+Примечания:
+Для теста в redis-benchmark использовалась ->
+redis-benchmark -h 127.0.0.1 -p 6379 -c 50 -n 10000 -t get -d 256 --csv
+
+Для теста в mysqlslap использовалась ->
+mysqlslap --user=root --password="mysql" --host=127.0.0.1 --port=3306 --concurrency=50 --iterations=10 --auto-generate-sql --verbose
+
